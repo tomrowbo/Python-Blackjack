@@ -114,6 +114,8 @@ class Game:
         self.player1.pick(self.deck)
         self.player1.update_value()
 
+        print("Game Initiated.")
+
 
     def play_game(self):
 
@@ -200,13 +202,25 @@ class Game:
             return
 
     def lose(self):
-        print("Lose")
+        print("You Lose!")
 
     def win(self):
-        print("Win")
+        print("You Won!")
 
     def push(self):
-        print("Push")
+        print("Push!")
+
+name = input("Enter player name:\n")
+while True:
+    game = Game(Deck(),Player(name),Player("Dealer"))
+    game.play_game()
+    carryon = input("Would you like to play on? Y/N").lower()
+    answered = False
+    while not answered:
+        if carryon == "n" or carryon == "no":
+            quit()
+        elif carryon == "y" or carryon == "yes":
+            answered = True
+        else:
+            print("Invalid Input")
         
-game = Game(Deck(),Player(input("Enter player name:\n")),Player("Dealer"))
-game.play_game()
