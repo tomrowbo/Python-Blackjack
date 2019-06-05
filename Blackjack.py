@@ -119,7 +119,7 @@ class Player(Dealer):
     def deposit(self):
         valid = False
         while not valid:
-            deposit = input("\nHow much would you like to deposit?")
+            deposit = input("\nHow much would you like to deposit?\n$")
             try:
                 deposit = int(deposit)
                 if deposit <= self.money and deposit >0:
@@ -140,6 +140,15 @@ class Player(Dealer):
             self.money += self.pot*2
         elif result == "push":
             self.money += self.pot
+
+    def double_down(self):
+        if self.money < self.pot:
+            return False
+        else:
+            self.money -= self.pot
+            self.pot = self.pot*2
+            print(self.name,"has doubled down. His pot is now $"+str(self.pot))
+            return True
         
             
 
@@ -148,6 +157,7 @@ class Game:
         self.player1 = player1
         self.dealer = dealer
         self.deck = deck
+        self.gameround = 1
 
         #Setting up hands
         self.dealer.pick(self.deck)
@@ -183,7 +193,7 @@ class Game:
             else:
                 self.win()
         else:
-            bust = self.make_choice()
+            bust,doubled = self.make_choice()
             if bust == True:
                 print("\n"+self.player1.name,"went bust!")
                 
@@ -195,20 +205,44 @@ class Game:
 
     def make_choice(self):
         valid = False
+        doubled = False
         while not valid:
-            answer = input("\nWould you like to hit or stand? H/S\n").lower()
+            if self.gameround == 1:
+                answer = input("\nWould you like to hit or stand or double down? H/S/D\n").lower()
+                
+                if answer == "d" or answer == "dd" or answer == "double down":
+                    doubled = player1.double_down()
+                    
+                    if doubled:
+                        answer = "h"
+
+                    else:
+                        print("Error: Unable to double down as you cannot afford it")
+
+                        
+            else:
+                answer = input("\nWould you like to hit or stand? H/S\n").lower()
+                
             if answer == "hit" or answer == "h":
                 bust = self.hit()
+                
                 if bust == True:
-                    return True
+                    return True,doubled
+                
                 else:
                     valid = True
+                    if doubled:
+                        return False,True
                     bust = self.make_choice()
-                    return bust
+                    return bust,doubled
+                
             elif answer == "stand" or answer == "s":
-                return False
-            else:
-                print("Invalid Input")
+                return False,doubled
+            
+            elif not doubled:
+                print("Error: Invalid Input")
+                
+        self.gameround += 1
 
     def hit(self):
         self.player1.pick(self.deck)
@@ -281,6 +315,7 @@ if __name__ == '__main__':
             game = Game(Deck(),player1,dealer)
             player1.money = game.play_game()
             carryon = input("\nWould you like to play on? Y/N\n").lower()
+            print()
             answered = False
             
             while not answered:
