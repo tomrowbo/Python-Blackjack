@@ -1,5 +1,6 @@
 import random
 
+players = []
 
 #Card Object - Object for each card.
 class Card:
@@ -72,8 +73,9 @@ class Dealer:
         #Listing one card
         print(self.hand[0].description)
 
-    def show_hand(self):
-        print("\n"+self.name,"has:")
+    def show_hand(self,playing):
+        if playing == True:
+            print("\n"+self.name,"has:")
         #Listing each card
         for card in self.hand:
             print(card.description)
@@ -114,12 +116,13 @@ class Player(Dealer):
     def __init__(self,nickname,money):
         self.money = money
         self.pot = 0
+        self.playing = True
         Dealer.__init__(self,nickname)
 
     def deposit(self):
         valid = False
         while not valid:
-            deposit = input("\nHow much would you like to deposit?\n$")
+            deposit = input("How much would you like to deposit?\n$")
             try:
                 deposit = int(deposit)
                 if deposit <= self.money and deposit >0:
@@ -130,6 +133,7 @@ class Player(Dealer):
                     print("Error: Unable to deposit $"+deposit+". You have $"+self.money)
             except:
                 print("Error: Integer not entered")
+        print()
         
 
     def show_money(self):
@@ -153,185 +157,214 @@ class Player(Dealer):
             
 
 class Game:
-    def __init__(self,deck,player1,dealer):
-        self.player1 = player1
+    def __init__(self,deck,players,dealer):
+        self.players = players
         self.dealer = dealer
         self.deck = deck
         self.gameround = 1
 
         #Setting up hands
+        #Two loops because each player gets dealt one card each before getting a second.
+        for player in self.players:
+            player.pick(self.deck)
+
+        for player in self.players:
+            player.pick(self.deck)
+            player.update_value()
+
+
         self.dealer.pick(self.deck)
         self.dealer.pick(self.deck)
-
-        self.player1.pick(self.deck)
-        self.player1.pick(self.deck)
-        self.player1.update_value()
-
 
     def play_game(self):
 
-        self.player1.show_money()
-        self.player1.deposit()
-        self.dealer.show_one()
-        self.player1.show_hand()
-        self.player1.show_value()
+        #Depositing funds
+        for player in self.players:
+            player.show_money()
+            player.deposit()
+
+        #Getting first cards and taking first turn
+        for player in self.players:
+            #Taking first turn
+            player = self.make_choice(player)
+
+        self.gameround += 1
+        count = -1
+        #While people are still playing
+        while count != 0:
+            count = 0
+            for player in self.players:
+                if player.playing == True:
+                    player = self.make_choice(player)
+                    if player.playing == True:
+                        count += 1
+            self.gameround += 1
+        self.dealers_turn()
+        print()
+
+        #Results for game
+        for player in self.players:
+            if len(player.totals) == 0:
+                print(player.name, "went bust and lost with the hand:")
+            elif len(dealer.totals) == 0:
+                print("Dealer went bust so",player.name,"won with the hand:")
+                player.update_money("win")
+            elif max(player.totals)>max(dealer.totals):
+                print(player.name,"scored higher than the dealer and won with the hand:")
+                player.update_money("win")
+            elif max(player.totals)<max(dealer.totals):
+                print(player.name,"scored less than the dealer and lost with the hand:")
+            else:
+                print(player.name,"scored the same as the dealer and pushed with the hand:")
+                player.update_money("push")
+            player.show_hand(False)
+            print()
+
         
-        #Checks if player has a natural
-        if 21 in self.player1.totals:
-            print("\n"+self.player1.name,"was dealt a natural blackjack.")
-
-            #Updating dealers value to see if he has a natural.
-            self.dealer.update_value()
-            self.dealer.show_hand()
-
-            
-            if 21 in self.dealer.totals:
-                print("\nBoth dealer and player were dealt a natural.")
-                print("Chips have been returned")
-                self.push()
-                
-            else:
-                self.win()
-        else:
-            bust,doubled = self.make_choice()
-            if bust == True:
-                print("\n"+self.player1.name,"went bust!")
-                
-            else:
-                self.stand()
-        return self.player1.money
+        return self.players
 
 
 
-    def make_choice(self):
+    def make_choice(self,player):
+
+        print("========"+player.name+"'s Turn========")
+        player.show_hand(True)
+        player.show_value()
+        self.dealer.show_one()
+        
+        #Checks if player has a 21
+        if 21 in player.totals and self.gameround == 1:
+            print("\n"+player.name,"was dealt a natural blackjack.")
+            player.playing = False
+            return player
+        
         valid = False
         doubled = False
-        while not valid:
-            if self.gameround == 1:
-                answer = input("\nWould you like to hit or stand or double down? H/S/D\n").lower()
-                
-                if answer == "d" or answer == "dd" or answer == "double down":
-                    doubled = player1.double_down()
-                    
-                    if doubled:
-                        answer = "h"
-
-                    else:
-                        print("Error: Unable to double down as you cannot afford it")
-
-                        
-            else:
-                answer = input("\nWould you like to hit or stand? H/S\n").lower()
-                
-            if answer == "hit" or answer == "h":
-                bust = self.hit()
-                
-                if bust == True:
-                    return True,doubled
-                
-                else:
-                    valid = True
-                    if doubled:
-                        return False,True
-                    bust = self.make_choice()
-                    return bust,doubled
-                
-            elif answer == "stand" or answer == "s":
-                return False,doubled
-            
-            elif not doubled:
-                print("Error: Invalid Input")
-                
-        self.gameround += 1
-
-    def hit(self):
-        self.player1.pick(self.deck)
-        self.player1.show_hand()
-        self.player1.update_value()
         
-        if len(self.player1.totals)== 0:
-            return True
+        while not valid:
+            valid = True
+            print("\nWhat would you like to do?:\n1- Hit\n2- Stand")
+            if self.gameround == 1:
+                print("3- Double down")
+                #Split Function
+                #if player1.hand[0].value == player1.hand[1].value:
+                 #   print("4- Split")
+
+
+            answer = input()
+            if answer == "1":
+                player = self.hit(player)
+
+            elif answer == "2":
+                player.playing = False
+
+            elif answer == "3" and self.gameround == 1:
+                doubled = player.double_down()
+                if doubled:
+                    player = self.hit(player)
+                    player.playing = False
+                    
+                else:
+                    print("Error: Unable to double down as you cannot afford it")
+                    valid = False
+
+            #elif answer == "4":
+                  #self.split(player)
+
+            else:
+                print("Error: Invalid Input")
+                valid = False
+        print()
+        return player
+
+
+    def hit(self,player):  
+        player.pick(self.deck)
+        player.show_hand(True)
+        player.update_value()
+        
+        if len(player.totals)== 0:
+            print(player.name,"went bust!")
+            player.playing = False
+            
+        elif 21 in player.totals:
+            print(player.name,"has a blackjack!")
+            player.playing = False
+            
         
         else:
-            self.player1.show_value()
-            return False
-
-    def stand(self):
-        self.dealer.update_value()
-        
-        while len(self.dealer.totals)!=0:
+            player.show_value()
             
+        return player
+
+
+    def dealers_turn(self):
+        self.dealer.update_value()
+        while len(self.dealer.totals)!= 0:
             if max(self.dealer.totals)<17:
                 self.dealer.pick(self.deck)
                 self.dealer.update_value()
-                
             else:
                 break
-            
-        self.dealer.show_hand()
-        
-        if len(self.dealer.totals)== 0:
+        self.dealer.show_hand(True)
+        if len(self.dealer.totals)==0:
             print("Dealer went bust!")
-            self.win()
-            return
-        
         else:
-            self.dealer.show_value()
-            
-        if max(self.dealer.totals)>max(self.player1.totals):
-            self.lose()
-            return
-        
-        elif max(self.dealer.totals)==max(self.player1.totals):
-            self.push()
-            return
-        
-        else:
-            self.win()
-            return
+            dealer.show_value()
 
-    def lose(self):
-        print("You Lose!")
-
-
-    def win(self):
-        self.player1.update_money("win")
-        print("You Won!")
-
-    def push(self):
-        self.player1.update_money("push")
-        print("Push!")
 
         
 if __name__ == '__main__':
-    name = input("Enter player name:\n")
+
+    #Getting number of players                      
+    unanswered = True                           
+    while unanswered:                          
+        amount = input("How many people are playing?:\n")                       
+        try:
+            amount = int(amount)
+            if amount > 7 or amount < 1:
+                print("Error: Invalid Input\n")                  
+            else:
+                unanswered = False
+                               
+        except:
+            print("Error: Invalid Input\n")
+
+    
+    for i in range(amount):
+        name = input("\nEnter player "+str(i+1)+" name:\n")
+        players.append(Player(name,100))
     print()
     
-    player1,dealer =Player(name,100),Dealer("Dealer")
+    dealer = Dealer("Dealer")
     
     while True:
-        
-        if player1.money != 0:
-            game = Game(Deck(),player1,dealer)
-            player1.money = game.play_game()
+        game = Game(Deck(),players,dealer)
+        players = game.play_game()
+
+        for player in players:
+            if player.money == 0:
+                print(player.name,"has no money left and has been kicked off the game")
+                players.remove(player)
+        if len(players) != 0:
             carryon = input("\nWould you like to play on? Y/N\n").lower()
             print()
             answered = False
-            
+        
             while not answered:
-                
                 if carryon == "n" or carryon == "no":
                     quit()
                     
                 elif carryon == "y" or carryon == "yes":
                     answered = True
-                    player1.clear_hand()
+                    for player in players:
+                        player.clear_hand()
                     dealer.clear_hand()
                     
                 else:
                     print("Invalid Input")
                     
         else:
-            print("You have no money left!")
-            quit()
-            
+            print("Player(s) have no money left")
+
+                
